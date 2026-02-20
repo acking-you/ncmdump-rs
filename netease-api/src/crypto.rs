@@ -5,7 +5,7 @@
 
 use aes::Aes128;
 use base64::{Engine, engine::general_purpose::STANDARD as B64};
-use cbc::{Encryptor, cipher::KeyIvInit, cipher::BlockEncryptMut, cipher::block_padding::Pkcs7};
+use cbc::{Encryptor, cipher::BlockEncryptMut, cipher::KeyIvInit, cipher::block_padding::Pkcs7};
 use num_bigint::BigUint;
 use rand::Rng;
 
@@ -42,7 +42,10 @@ pub fn weapi_encrypt(data: &str) -> WeapiPayload {
 
     let enc_sec_key = rsa_encrypt(&secret_key);
 
-    WeapiPayload { params, enc_sec_key }
+    WeapiPayload {
+        params,
+        enc_sec_key,
+    }
 }
 
 /// AES-128-CBC encrypt with PKCS7 padding.

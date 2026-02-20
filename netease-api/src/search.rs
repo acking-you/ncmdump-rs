@@ -27,9 +27,7 @@
 
 use crate::client::NeteaseClient;
 use crate::error::Result;
-use crate::types::{
-    Album, Artist, Playlist, SearchResult, SearchType, Track, UserBrief,
-};
+use crate::types::{Album, Artist, Playlist, SearchResult, SearchType, Track, UserBrief};
 use serde_json::{Value, json};
 
 impl NeteaseClient {
@@ -107,7 +105,11 @@ fn parse_tracks(arr: Option<&Vec<Value>>) -> Vec<Track> {
                         .collect()
                 })
                 .unwrap_or_default();
-            let al = if v["al"].is_null() { &v["album"] } else { &v["al"] };
+            let al = if v["al"].is_null() {
+                &v["album"]
+            } else {
+                &v["al"]
+            };
             Track {
                 id: v["id"].as_u64().unwrap_or(0),
                 name: v["name"].as_str().unwrap_or("").to_owned(),
@@ -153,10 +155,7 @@ fn parse_playlists(arr: Option<&Vec<Value>>) -> Vec<Playlist> {
             } else {
                 Some(UserBrief {
                     id: v["creator"]["userId"].as_u64().unwrap_or(0),
-                    name: v["creator"]["nickname"]
-                        .as_str()
-                        .unwrap_or("")
-                        .to_owned(),
+                    name: v["creator"]["nickname"].as_str().unwrap_or("").to_owned(),
                 })
             };
             Playlist {

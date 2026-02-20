@@ -78,7 +78,11 @@ fn parse_track(v: &Value) -> Track {
         })
         .unwrap_or_default();
 
-    let al = if v["al"].is_null() { &v["album"] } else { &v["al"] };
+    let al = if v["al"].is_null() {
+        &v["album"]
+    } else {
+        &v["al"]
+    };
     Track {
         id: v["id"].as_u64().unwrap_or(0),
         name: v["name"].as_str().unwrap_or("").to_owned(),

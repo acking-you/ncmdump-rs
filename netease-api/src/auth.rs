@@ -62,9 +62,7 @@ impl Session {
     /// fields expected by the Netease server: `os=pc`, `__remember_me=true`.
     pub fn cookie_header(&self) -> Option<String> {
         let music_u = self.music_u.as_deref()?;
-        Some(format!(
-            "os=pc; __remember_me=true; MUSIC_U={music_u}"
-        ))
+        Some(format!("os=pc; __remember_me=true; MUSIC_U={music_u}"))
     }
 
     /// Check whether a `MUSIC_U` cookie is present (does not validate it).

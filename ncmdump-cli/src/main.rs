@@ -5,7 +5,11 @@ use clap::{Parser, Subcommand, ValueEnum};
 use walkdir::WalkDir;
 
 #[derive(Parser)]
-#[command(name = "ncmdump", version, about = "NCM decryptor & Netease Cloud Music CLI")]
+#[command(
+    name = "ncmdump",
+    version,
+    about = "NCM decryptor & Netease Cloud Music CLI"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -129,7 +133,13 @@ fn main() -> Result<()> {
             recursive,
             output,
             remove,
-        } => cmd_dump(files, directory.as_ref(), recursive, output.as_ref(), remove),
+        } => cmd_dump(
+            files,
+            directory.as_ref(),
+            recursive,
+            output.as_ref(),
+            remove,
+        ),
         Command::Login { music_u, check } => cmd_login(music_u, check),
         Command::Logout => cmd_logout(),
         Command::Search {
@@ -282,7 +292,11 @@ fn cmd_info(track_id: u64) -> Result<()> {
     println!("Track:    {} (id={})", t.name, t.id);
     println!("Artists:  {}", artists.join(", "));
     println!("Album:    {} (id={})", t.album.name, t.album.id);
-    println!("Duration: {}:{:02}", t.duration_ms / 60000, (t.duration_ms / 1000) % 60);
+    println!(
+        "Duration: {}:{:02}",
+        t.duration_ms / 60000,
+        (t.duration_ms / 1000) % 60
+    );
     Ok(())
 }
 

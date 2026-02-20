@@ -99,9 +99,7 @@ impl NeteaseClient {
         let url = resp["data"][0]["url"]
             .as_str()
             .ok_or_else(|| {
-                NeteaseError::Other(
-                    "track unavailable (no copyright or VIP required)".into(),
-                )
+                NeteaseError::Other("track unavailable (no copyright or VIP required)".into())
             })?
             .to_owned();
         Ok(url)
@@ -125,12 +123,7 @@ impl NeteaseClient {
     ///
     /// Combines [`track_url`](Self::track_url) + [`download`](Self::download).
     /// Returns the number of bytes written to `dest`.
-    pub fn download_track(
-        &self,
-        id: u64,
-        quality: Quality,
-        dest: &Path,
-    ) -> Result<u64> {
+    pub fn download_track(&self, id: u64, quality: Quality, dest: &Path) -> Result<u64> {
         let url = self.track_url(id, quality)?;
         self.download(&url, dest)
     }
@@ -150,7 +143,11 @@ fn parse_track(v: &Value) -> Track {
         })
         .unwrap_or_default();
 
-    let al = if v["al"].is_null() { &v["album"] } else { &v["al"] };
+    let al = if v["al"].is_null() {
+        &v["album"]
+    } else {
+        &v["al"]
+    };
     let album = Album {
         id: al["id"].as_u64().unwrap_or(0),
         name: al["name"].as_str().unwrap_or("").to_owned(),
