@@ -9,6 +9,7 @@ license.workspace = true
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 ncmdump = { path = "../ncmdump" }
+netease-api = { path = "../netease-api" }
 walkdir = "2"
 
 [lints]
