@@ -106,7 +106,7 @@ jobs:
           elif [ "${{ matrix.os }}" = "macos-latest" ]; then
             cp "${RELEASE_DIR}/libncmdump_ffi.dylib" "${SHARED_DIR}/"
           else
-            cp "${RELEASE_DIR}/libncmdump_ffi.so" "${SHARED_DIR}/"
+            cp "${RELEASE_DIR}/libncmdump_ffi.so" "${SHARED_DIR}/" 2>/dev/null || true
           fi
           SHARED_ASSET=$(archive "${SHARED_DIR}" "${SHARED_DIR}")
           echo "SHARED_ASSET=${SHARED_ASSET}" >> $GITHUB_ENV
@@ -117,7 +117,7 @@ jobs:
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             cp "${RELEASE_DIR}/ncmdump_ffi.lib" "${STATIC_DIR}/" 2>/dev/null || true
           else
-            cp "${RELEASE_DIR}/libncmdump_ffi.a" "${STATIC_DIR}/"
+            cp "${RELEASE_DIR}/libncmdump_ffi.a" "${SHARED_DIR}/" 2>/dev/null || true
           fi
           STATIC_ASSET=$(archive "${STATIC_DIR}" "${STATIC_DIR}")
           echo "STATIC_ASSET=${STATIC_ASSET}" >> $GITHUB_ENV
