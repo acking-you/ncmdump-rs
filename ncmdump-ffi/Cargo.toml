@@ -1,0 +1,15 @@
+[package]
+name = "ncmdump-ffi"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+ncmdump = { path = "../ncmdump" }
+
+[lints]
+workspace = true
