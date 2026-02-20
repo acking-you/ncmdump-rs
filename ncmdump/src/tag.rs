@@ -40,8 +40,10 @@ pub fn write_tags(path: &Path, metadata: &NcmMetadata, cover: Option<&[u8]>) -> 
         } else {
             MimeType::Jpeg
         };
-        let pic =
-            Picture::new_unchecked(PictureType::CoverFront, Some(mime), None, img_data.to_vec());
+        let pic = Picture::unchecked(img_data.to_vec())
+            .pic_type(PictureType::CoverFront)
+            .mime_type(mime)
+            .build();
         tag.push_picture(pic);
     }
 

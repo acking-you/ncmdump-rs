@@ -1,0 +1,138 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: ${{ matrix.build }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - build: x86_64-linux-musl
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+          - build: aarch64-linux-musl
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+          - build: x86_64-macos
+            os: macos-latest
+            target: x86_64-apple-darwin
+          - build: aarch64-macos
+            os: macos-latest
+            target: aarch64-apple-darwin
+          - build: x86_64-windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from tag
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build CLI
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+            cross build --release --target ${{ matrix.target }} -p ncmdump-cli
+          else
+            cargo build --release --target ${{ matrix.target }} -p ncmdump-cli
+          fi
+
+      - name: Build FFI
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+            cross build --release --target ${{ matrix.target }} -p ncmdump-ffi
+          else
+            cargo build --release --target ${{ matrix.target }} -p ncmdump-ffi
+          fi
+
+      - name: Package artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET="${{ matrix.target }}"
+          RELEASE_DIR="target/${TARGET}/release"
+
+          archive() {
+            local name="$1" dir="$2"
+            if [ "${{ matrix.os }}" = "windows-latest" ]; then
+              7z a "${name}.zip" "${dir}"
+              echo "${name}.zip"
+            else
+              tar -czf "${name}.tar.gz" "${dir}"
+              echo "${name}.tar.gz"
+            fi
+          }
+
+          # CLI binary
+          CLI_DIR="ncmdump-cli-${{ env.VERSION }}-${TARGET}"
+          mkdir "${CLI_DIR}"
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cp "${RELEASE_DIR}/ncmdump-cli.exe" "${CLI_DIR}/"
+          else
+            cp "${RELEASE_DIR}/ncmdump-cli" "${CLI_DIR}/"
+          fi
+          CLI_ASSET=$(archive "${CLI_DIR}" "${CLI_DIR}")
+          echo "CLI_ASSET=${CLI_ASSET}" >> $GITHUB_ENV
+
+          # FFI shared library
+          SHARED_DIR="ncmdump-ffi-shared-${{ env.VERSION }}-${TARGET}"
+          mkdir "${SHARED_DIR}"
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cp "${RELEASE_DIR}/ncmdump_ffi.dll" "${SHARED_DIR}/" 2>/dev/null || true
+            cp "${RELEASE_DIR}/ncmdump_ffi.dll.lib" "${SHARED_DIR}/" 2>/dev/null || true
+          elif [ "${{ matrix.os }}" = "macos-latest" ]; then
+            cp "${RELEASE_DIR}/libncmdump_ffi.dylib" "${SHARED_DIR}/"
+          else
+            cp "${RELEASE_DIR}/libncmdump_ffi.so" "${SHARED_DIR}/"
+          fi
+          SHARED_ASSET=$(archive "${SHARED_DIR}" "${SHARED_DIR}")
+          echo "SHARED_ASSET=${SHARED_ASSET}" >> $GITHUB_ENV
+
+          # FFI static library
+          STATIC_DIR="ncmdump-ffi-static-${{ env.VERSION }}-${TARGET}"
+          mkdir "${STATIC_DIR}"
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cp "${RELEASE_DIR}/ncmdump_ffi.lib" "${STATIC_DIR}/" 2>/dev/null || true
+          else
+            cp "${RELEASE_DIR}/libncmdump_ffi.a" "${STATIC_DIR}/"
+          fi
+          STATIC_ASSET=$(archive "${STATIC_DIR}" "${STATIC_DIR}")
+          echo "STATIC_ASSET=${STATIC_ASSET}" >> $GITHUB_ENV
+
+      - name: Extract changelog
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          # Extract content between first two ## headers (current version)
+          awk '/^## /{if(p) exit; p=1; next} p' CHANGELOG.md > RELEASE_NOTES.md
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: RELEASE_NOTES.md
+          files: |
+            ${{ env.CLI_ASSET }}
+            ${{ env.SHARED_ASSET }}
+            ${{ env.STATIC_ASSET }}
