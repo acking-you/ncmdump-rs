@@ -52,7 +52,9 @@ impl BilibiliClient {
             return Ok(keys.clone());
         }
 
-        let mut req = self.http.get(format!("{API_BASE}/x/web-interface/nav"))
+        let mut req = self
+            .http
+            .get(format!("{API_BASE}/x/web-interface/nav"))
             .header("Referer", REFERER)
             .header("Origin", ORIGIN);
         if let Some(cookie) = self.session.cookie_header() {
@@ -67,8 +69,11 @@ impl BilibiliClient {
 
         // Extract key from URL: last path segment without extension.
         let extract_key = |url: &str| -> String {
-            url.rsplit('/').next().unwrap_or("")
-                .rsplit_once('.').map_or("", |(name, _)| name)
+            url.rsplit('/')
+                .next()
+                .unwrap_or("")
+                .rsplit_once('.')
+                .map_or("", |(name, _)| name)
                 .to_owned()
         };
 
@@ -83,7 +88,9 @@ impl BilibiliClient {
         let signed = wbi::sign_params(params, &img_key, &sub_key);
 
         let url = format!("{API_BASE}{path}");
-        let mut req = self.http.get(&url)
+        let mut req = self
+            .http
+            .get(&url)
             .query(&signed)
             .header("Referer", REFERER)
             .header("Origin", ORIGIN);
@@ -94,7 +101,10 @@ impl BilibiliClient {
         let resp: Value = req.send()?.json()?;
         let code = resp["code"].as_i64().unwrap_or(-1);
         if code != 0 {
-            let msg = resp["message"].as_str().unwrap_or("unknown error").to_owned();
+            let msg = resp["message"]
+                .as_str()
+                .unwrap_or("unknown error")
+                .to_owned();
             return Err(BilibiliError::Api { code, message: msg });
         }
         Ok(resp)
@@ -102,7 +112,9 @@ impl BilibiliClient {
 
     /// Send a plain GET request (no WBI signing).
     pub fn get(&self, url: &str) -> Result<Value> {
-        let mut req = self.http.get(url)
+        let mut req = self
+            .http
+            .get(url)
             .header("Referer", REFERER)
             .header("Origin", ORIGIN);
         if let Some(cookie) = self.session.cookie_header() {
@@ -114,7 +126,9 @@ impl BilibiliClient {
 
     /// Download raw bytes from a URL with proper Bilibili headers.
     pub fn download_raw(&self, url: &str, dest: &std::path::Path) -> Result<u64> {
-        let resp = self.http.get(url)
+        let resp = self
+            .http
+            .get(url)
             .header("Referer", REFERER)
             .header("Origin", ORIGIN)
             .header("User-Agent", USER_AGENT)
@@ -129,9 +143,12 @@ impl BilibiliClient {
     /// Generate a QR code for login.
     pub fn qr_generate(&self) -> Result<QrCodeGenerate> {
         let url = format!("{PASSPORT_BASE}/x/passport-login/web/qrcode/generate");
-        let resp: Value = self.http.get(&url)
+        let resp: Value = self
+            .http
+            .get(&url)
             .header("Referer", REFERER)
-            .send()?.json()?;
+            .send()?
+            .json()?;
 
         let code = resp["code"].as_i64().unwrap_or(-1);
         if code != 0 {
@@ -147,15 +164,13 @@ impl BilibiliClient {
 
     /// Poll QR code login status.
     pub fn qr_poll(&self, qrcode_key: &str) -> Result<QrPollStatus> {
-        let url = format!(
-            "{PASSPORT_BASE}/x/passport-login/web/qrcode/poll?qrcode_key={qrcode_key}"
-        );
-        let resp = self.http.get(&url)
-            .header("Referer", REFERER)
-            .send()?;
+        let url =
+            format!("{PASSPORT_BASE}/x/passport-login/web/qrcode/poll?qrcode_key={qrcode_key}");
+        let resp = self.http.get(&url).header("Referer", REFERER).send()?;
 
         // Extract Set-Cookie headers before consuming body.
-        let cookies: Vec<String> = resp.headers()
+        let cookies: Vec<String> = resp
+            .headers()
             .get_all("set-cookie")
             .iter()
             .filter_map(|v| v.to_str().ok().map(String::from))
@@ -174,7 +189,10 @@ impl BilibiliClient {
             86090 => Ok(QrPollStatus::Scanned),
             86101 => Ok(QrPollStatus::Waiting),
             _ => {
-                let msg = json["data"]["message"].as_str().unwrap_or("unknown").to_owned();
+                let msg = json["data"]["message"]
+                    .as_str()
+                    .unwrap_or("unknown")
+                    .to_owned();
                 Err(BilibiliError::QrLogin(msg))
             }
         }

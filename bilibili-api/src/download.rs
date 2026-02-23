@@ -16,12 +16,7 @@ impl BilibiliClient {
     /// 4. Download raw m4s to temp file
     /// 5. Convert with ffmpeg to target format
     /// 6. Clean up temp file
-    pub fn download_audio(
-        &self,
-        bvid: &str,
-        output: &Path,
-        format: AudioFormat,
-    ) -> Result<u64> {
+    pub fn download_audio(&self, bvid: &str, output: &Path, format: AudioFormat) -> Result<u64> {
         let detail = self.video_detail(bvid)?;
         let cid = detail.cid;
 
@@ -30,7 +25,9 @@ impl BilibiliClient {
             .ok_or_else(|| BilibiliError::Other("no audio stream available".into()))?;
 
         let url = if stream.base_url.is_empty() {
-            stream.backup_url.first()
+            stream
+                .backup_url
+                .first()
                 .ok_or_else(|| BilibiliError::Other("no audio URL".into()))?
                 .as_str()
         } else {
@@ -61,13 +58,21 @@ pub fn ffmpeg_convert(input: &Path, output: &Path, format: AudioFormat) -> Resul
 
     let args: Vec<&str> = match format {
         AudioFormat::Mp3 => vec![
-            "-y", "-i", input.to_str().unwrap_or(""),
-            "-codec:a", "libmp3lame", "-b:a", "320k",
+            "-y",
+            "-i",
+            input.to_str().unwrap_or(""),
+            "-codec:a",
+            "libmp3lame",
+            "-b:a",
+            "320k",
             output.to_str().unwrap_or(""),
         ],
         AudioFormat::Flac => vec![
-            "-y", "-i", input.to_str().unwrap_or(""),
-            "-codec:a", "flac",
+            "-y",
+            "-i",
+            input.to_str().unwrap_or(""),
+            "-codec:a",
+            "flac",
             output.to_str().unwrap_or(""),
         ],
     };

@@ -86,7 +86,6 @@ enum Command {
     Me,
 
     // ── Bilibili commands ──
-
     /// Bilibili QR code login
     #[command(name = "bili-login")]
     BiliLogin {
@@ -473,9 +472,9 @@ fn cmd_bili_login(check: bool) -> Result<()> {
     let qr = client.qr_generate()?;
 
     // Render QR code in terminal.
-    let code = qrcode::QrCode::new(qr.url.as_bytes())
-        .context("failed to generate QR code")?;
-    let qr_string = code.render::<qrcode::render::unicode::Dense1x2>()
+    let code = qrcode::QrCode::new(qr.url.as_bytes()).context("failed to generate QR code")?;
+    let qr_string = code
+        .render::<qrcode::render::unicode::Dense1x2>()
         .dark_color(qrcode::render::unicode::Dense1x2::Light)
         .light_color(qrcode::render::unicode::Dense1x2::Dark)
         .build();
@@ -516,13 +515,11 @@ fn cmd_bili_search(keyword: &str, limit: u64, page: u64) -> Result<()> {
     println!("Total: {}\n", result.num_results);
     for v in &result.results {
         // Strip HTML highlight tags from title.
-        let title = v.title
+        let title = v
+            .title
             .replace("<em class=\"keyword\">", "")
             .replace("</em>", "");
-        println!(
-            "  [{}] {} - {} ({})",
-            v.bvid, v.author, title, v.duration,
-        );
+        println!("  [{}] {} - {} ({})", v.bvid, v.author, title, v.duration,);
     }
     Ok(())
 }
@@ -554,9 +551,7 @@ fn cmd_bili_download(bvid: &str, format: BiliFormatArg, output: Option<PathBuf>)
     let client = bilibili_api::BilibiliClient::new()?;
     let fmt: bilibili_api::types::AudioFormat = format.into();
 
-    let dest = output.unwrap_or_else(|| {
-        PathBuf::from(format!("{bvid}.{}", fmt.extension()))
-    });
+    let dest = output.unwrap_or_else(|| PathBuf::from(format!("{bvid}.{}", fmt.extension())));
 
     println!("Downloading audio from {bvid}...");
     let size = client.download_audio(bvid, &dest, fmt)?;
@@ -570,7 +565,14 @@ fn cmd_bili_me() -> Result<()> {
     if info.is_login {
         println!("User:   {} (mid={})", info.name, info.mid);
         println!("Avatar: {}", info.face);
-        println!("VIP:    {}", if info.vip_status > 0 { "active" } else { "none" });
+        println!(
+            "VIP:    {}",
+            if info.vip_status > 0 {
+                "active"
+            } else {
+                "none"
+            }
+        );
     } else {
         println!("Not logged in.");
     }

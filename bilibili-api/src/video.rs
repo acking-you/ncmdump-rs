@@ -38,9 +38,9 @@ impl BilibiliClient {
             })
             .unwrap_or_default();
 
-        let flac = dash["flac"].as_object().and_then(|obj| {
-            serde_json::from_value(serde_json::Value::Object(obj.clone())).ok()
-        });
+        let flac = dash["flac"]
+            .as_object()
+            .and_then(|obj| serde_json::from_value(serde_json::Value::Object(obj.clone())).ok());
 
         Ok(DashInfo { audio, flac })
     }
