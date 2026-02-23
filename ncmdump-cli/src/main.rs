@@ -111,7 +111,7 @@ enum Command {
     /// Show Bilibili video details
     #[command(name = "bili-info")]
     BiliInfo {
-        /// BV ID (e.g. BV1xx411c7mD)
+        /// BV ID (e.g. `BV1xx411c7mD`)
         bvid: String,
     },
     /// Download audio from Bilibili video

@@ -36,7 +36,7 @@ impl AudioFormat {
 /// A video item from search results.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VideoItem {
-    /// BV ID (e.g. "BV1xx411c7mD").
+    /// BV ID (e.g. `BV1xx411c7mD`).
     pub bvid: String,
     /// Video title (may contain HTML highlight tags).
     pub title: String,

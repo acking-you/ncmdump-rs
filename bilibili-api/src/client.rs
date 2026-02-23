@@ -1,6 +1,6 @@
 //! HTTP client for Bilibili web API.
 //!
-//! Handles WBI-signed GET requests, session cookies, and wbi_keys caching.
+//! Handles WBI-signed GET requests, session cookies, and `wbi_keys` caching.
 
 use crate::auth::{BiliSession, QrCodeGenerate, QrPollStatus};
 use crate::error::{BilibiliError, Result};
@@ -16,7 +16,7 @@ const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) \
 const REFERER: &str = "https://www.bilibili.com/";
 const ORIGIN: &str = "https://www.bilibili.com";
 
-/// Cached WBI keys (img_key, sub_key).
+/// Cached WBI keys (`img_key`, `sub_key`).
 type WbiKeys = (String, String);
 
 /// Blocking HTTP client for the Bilibili API.
