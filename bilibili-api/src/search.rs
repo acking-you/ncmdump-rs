@@ -21,7 +21,11 @@ impl BilibiliClient {
 
         let num_results = data["numResults"]
             .as_u64()
-            .or_else(|| data["numResults"].as_i64().map(|n| u64::try_from(n).unwrap_or(0)))
+            .or_else(|| {
+                data["numResults"]
+                    .as_i64()
+                    .map(|n| u64::try_from(n).unwrap_or(0))
+            })
             .unwrap_or(0);
 
         let results: Vec<VideoItem> = data["result"]
