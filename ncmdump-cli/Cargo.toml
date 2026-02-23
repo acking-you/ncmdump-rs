@@ -10,6 +10,8 @@ anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 ncmdump = { path = "../ncmdump" }
 netease-api = { path = "../netease-api" }
+bilibili-api = { path = "../bilibili-api" }
+qrcode = "0.14"
 walkdir = "2"
 
 [lints]

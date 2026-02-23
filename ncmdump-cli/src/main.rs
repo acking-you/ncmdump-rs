@@ -8,7 +8,7 @@ use walkdir::WalkDir;
 #[command(
     name = "ncmdump",
     version,
-    about = "NCM decryptor & Netease Cloud Music CLI"
+    about = "NCM decryptor & Netease/Bilibili Music CLI"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -84,6 +84,52 @@ enum Command {
     },
     /// Show current user info
     Me,
+
+    // ── Bilibili commands ──
+
+    /// Bilibili QR code login
+    #[command(name = "bili-login")]
+    BiliLogin {
+        /// Check current login status instead of logging in
+        #[arg(long)]
+        check: bool,
+    },
+    /// Clear Bilibili session
+    #[command(name = "bili-logout")]
+    BiliLogout,
+    /// Search Bilibili videos
+    #[command(name = "bili-search")]
+    BiliSearch {
+        /// Search keyword
+        keyword: String,
+        /// Max results per page
+        #[arg(short, long, default_value = "20")]
+        limit: u64,
+        /// Page number
+        #[arg(short, long, default_value = "1")]
+        page: u64,
+    },
+    /// Show Bilibili video details
+    #[command(name = "bili-info")]
+    BiliInfo {
+        /// BV ID (e.g. BV1xx411c7mD)
+        bvid: String,
+    },
+    /// Download audio from Bilibili video
+    #[command(name = "bili-download")]
+    BiliDownload {
+        /// BV ID
+        bvid: String,
+        /// Output format
+        #[arg(short, long, default_value = "mp3")]
+        format: BiliFormatArg,
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+    /// Show current Bilibili user info
+    #[command(name = "bili-me")]
+    BiliMe,
 }
 
 #[derive(Clone, ValueEnum)]
@@ -100,6 +146,12 @@ enum QualityArg {
     Higher,
     Exhigh,
     Lossless,
+}
+
+#[derive(Clone, ValueEnum)]
+enum BiliFormatArg {
+    Mp3,
+    Flac,
 }
 
 impl From<SearchKind> for netease_api::types::SearchType {
@@ -120,6 +172,15 @@ impl From<QualityArg> for netease_api::types::Quality {
             QualityArg::Higher => Self::Higher,
             QualityArg::Exhigh => Self::Exhigh,
             QualityArg::Lossless => Self::Lossless,
+        }
+    }
+}
+
+impl From<BiliFormatArg> for bilibili_api::types::AudioFormat {
+    fn from(f: BiliFormatArg) -> Self {
+        match f {
+            BiliFormatArg::Mp3 => Self::Mp3,
+            BiliFormatArg::Flac => Self::Flac,
         }
     }
 }
@@ -156,6 +217,22 @@ fn main() -> Result<()> {
         } => cmd_download(track_id, quality, output),
         Command::Playlist { playlist_id } => cmd_playlist(playlist_id),
         Command::Me => cmd_me(),
+
+        // ── Bilibili ──
+        Command::BiliLogin { check } => cmd_bili_login(check),
+        Command::BiliLogout => cmd_bili_logout(),
+        Command::BiliSearch {
+            keyword,
+            limit,
+            page,
+        } => cmd_bili_search(&keyword, limit, page),
+        Command::BiliInfo { bvid } => cmd_bili_info(&bvid),
+        Command::BiliDownload {
+            bvid,
+            format,
+            output,
+        } => cmd_bili_download(&bvid, format, output),
+        Command::BiliMe => cmd_bili_me(),
     }
 }
 
@@ -363,6 +440,139 @@ fn cmd_me() -> Result<()> {
     println!("User:   {} (id={})", profile.nickname, profile.id);
     if let Some(url) = &profile.avatar_url {
         println!("Avatar: {url}");
+    }
+    Ok(())
+}
+
+// ── Bilibili commands ──
+
+fn cmd_bili_login(check: bool) -> Result<()> {
+    use bilibili_api::auth::BiliSession;
+
+    if check {
+        let session = BiliSession::load()?;
+        if session.is_logged_in() {
+            let client = bilibili_api::BilibiliClient::new()?;
+            match client.user_info() {
+                Ok(info) if info.is_login => {
+                    println!("Logged in as: {} (mid={})", info.name, info.mid);
+                    if info.vip_status > 0 {
+                        println!("VIP: active");
+                    }
+                }
+                _ => println!("Session exists but validation failed."),
+            }
+        } else {
+            println!("Not logged in.");
+        }
+        return Ok(());
+    }
+
+    // QR code login flow.
+    let client = bilibili_api::BilibiliClient::new()?;
+    let qr = client.qr_generate()?;
+
+    // Render QR code in terminal.
+    let code = qrcode::QrCode::new(qr.url.as_bytes())
+        .context("failed to generate QR code")?;
+    let qr_string = code.render::<qrcode::render::unicode::Dense1x2>()
+        .dark_color(qrcode::render::unicode::Dense1x2::Light)
+        .light_color(qrcode::render::unicode::Dense1x2::Dark)
+        .build();
+    println!("Scan with Bilibili mobile app:\n");
+    println!("{qr_string}");
+    println!("Waiting for scan...");
+
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        match client.qr_poll(&qr.qrcode_key)? {
+            bilibili_api::auth::QrPollStatus::Success(session) => {
+                session.save()?;
+                println!("Login successful! Session saved.");
+                return Ok(());
+            }
+            bilibili_api::auth::QrPollStatus::Scanned => {
+                println!("Scanned, waiting for confirm...");
+            }
+            bilibili_api::auth::QrPollStatus::Expired => {
+                println!("QR code expired. Please try again.");
+                return Ok(());
+            }
+            bilibili_api::auth::QrPollStatus::Waiting => {}
+        }
+    }
+}
+
+fn cmd_bili_logout() -> Result<()> {
+    bilibili_api::auth::BiliSession::clear()?;
+    println!("Bilibili session cleared.");
+    Ok(())
+}
+
+fn cmd_bili_search(keyword: &str, limit: u64, page: u64) -> Result<()> {
+    let client = bilibili_api::BilibiliClient::new()?;
+    let result = client.search_video(keyword, page, limit)?;
+
+    println!("Total: {}\n", result.num_results);
+    for v in &result.results {
+        // Strip HTML highlight tags from title.
+        let title = v.title
+            .replace("<em class=\"keyword\">", "")
+            .replace("</em>", "");
+        println!(
+            "  [{}] {} - {} ({})",
+            v.bvid, v.author, title, v.duration,
+        );
+    }
+    Ok(())
+}
+
+fn cmd_bili_info(bvid: &str) -> Result<()> {
+    let client = bilibili_api::BilibiliClient::new()?;
+    let v = client.video_detail(bvid)?;
+    println!("Title:    {}", v.title);
+    println!("BV ID:    {}", v.bvid);
+    println!("AV ID:    {}", v.aid);
+    println!("CID:      {}", v.cid);
+    println!("Author:   {} (mid={})", v.owner.name, v.owner.mid);
+    println!("Duration: {}:{:02}", v.duration / 60, v.duration % 60);
+    println!("Cover:    {}", v.pic);
+    if v.pages.len() > 1 {
+        println!("\nParts:");
+        for p in &v.pages {
+            println!("  P{}: {} (cid={}, {}s)", p.page, p.part, p.cid, p.duration);
+        }
+    }
+    Ok(())
+}
+
+fn cmd_bili_download(bvid: &str, format: BiliFormatArg, output: Option<PathBuf>) -> Result<()> {
+    if !bilibili_api::download::ffmpeg_available() {
+        anyhow::bail!("ffmpeg not found in PATH. Please install ffmpeg first.");
+    }
+
+    let client = bilibili_api::BilibiliClient::new()?;
+    let fmt: bilibili_api::types::AudioFormat = format.into();
+
+    let dest = output.unwrap_or_else(|| {
+        PathBuf::from(format!("{bvid}.{}", fmt.extension()))
+    });
+
+    println!("Downloading audio from {bvid}...");
+    let size = client.download_audio(bvid, &dest, fmt)?;
+    println!("Downloaded {} ({} bytes)", dest.display(), size);
+    Ok(())
+}
+
+fn cmd_bili_me() -> Result<()> {
+    let client = bilibili_api::BilibiliClient::new()?;
+    let info = client.user_info()?;
+    if info.is_login {
+        println!("User:   {} (mid={})", info.name, info.mid);
+        println!("Avatar: {}", info.face);
+        println!("VIP:    {}", if info.vip_status > 0 { "active" } else { "none" });
+    } else {
+        println!("Not logged in.");
     }
     Ok(())
 }

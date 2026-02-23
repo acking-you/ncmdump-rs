@@ -1,5 +1,5 @@
 [workspace]
-members = ["ncmdump", "ncmdump-cli", "ncmdump-ffi", "netease-api"]
+members = ["ncmdump", "ncmdump-cli", "ncmdump-ffi", "netease-api", "bilibili-api"]
 resolver = "2"
 
 [workspace.package]
