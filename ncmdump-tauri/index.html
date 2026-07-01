@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ncmdump Tauri Login Demo</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+
+  <body>
+    <main class="shell">
+      <section class="panel hero">
+        <p class="eyebrow">ncmdump-tauri</p>
+        <h1 id="provider-title">Login to NetEase Cloud Music in the embedded webview</h1>
+        <p class="lede">
+          This example now supports both NetEase and Bilibili. It uses the same pattern as
+          `ytdl-audio`: navigate the Tauri webview to the site, finish login there, then
+          extract cookies from that webview into the Rust session store.
+        </p>
+      </section>
+
+      <section class="panel controls">
+        <div class="provider-switch">
+          <button type="button" class="provider-tab" data-provider="netease" data-active="true">NetEase</button>
+          <button type="button" class="provider-tab secondary" data-provider="bilibili" data-active="false">Bilibili</button>
+        </div>
+
+        <p class="provider-hint" id="provider-hint"></p>
+
+        <div class="actions">
+          <button id="open-login" type="button">Open NetEase Login</button>
+          <button id="capture-login" type="button">Capture MUSIC_U</button>
+          <button id="refresh-status" type="button" class="secondary">Refresh Status</button>
+          <button id="logout" type="button" class="danger">Clear Session</button>
+        </div>
+
+        <dl class="status-grid">
+          <div>
+            <dt>Status</dt>
+            <dd id="status-value">Loading...</dd>
+          </div>
+          <div>
+            <dt>Session File</dt>
+            <dd id="session-path">Loading...</dd>
+          </div>
+          <div>
+            <dt>Saved Cookies</dt>
+            <dd id="summary">Loading...</dd>
+          </div>
+        </dl>
+
+        <p class="message" id="message" data-kind="info"></p>
+      </section>
+
+      <section class="panel controls">
+        <h2>Search</h2>
+        <p class="provider-hint">
+          Search inside the webview app, then download directly from the result list.
+        </p>
+
+        <div class="download-form">
+          <label class="field">
+            <span>NetEase Search</span>
+            <input id="netease-search" type="text" placeholder="Song or artist" />
+          </label>
+          <button id="search-netease" type="button">Search NetEase</button>
+          <div id="netease-results" class="results"></div>
+        </div>
+
+        <div class="download-form">
+          <label class="field">
+            <span>Bilibili Search</span>
+            <input id="bilibili-search" type="text" placeholder="Video keyword" />
+          </label>
+          <button id="search-bilibili" type="button">Search Bilibili</button>
+          <div id="bilibili-results" class="results"></div>
+        </div>
+      </section>
+
+      <section class="panel controls">
+        <h2>Downloads</h2>
+        <p class="provider-hint">
+          Bilibili accepts a BV ID or video URL and saves the raw best audio stream. NetEase currently accepts a numeric track ID and saves into the app work directory.
+        </p>
+
+        <div class="download-form">
+          <label class="field">
+            <span>Bilibili URL or BV ID</span>
+            <input id="bilibili-input" type="text" placeholder="https://www.bilibili.com/video/BV... or BV..." />
+          </label>
+          <button id="download-bilibili" type="button">Download Bilibili Stream</button>
+        </div>
+
+        <div class="download-form">
+          <label class="field">
+            <span>NetEase Track ID</span>
+            <input id="netease-track-id" type="number" inputmode="numeric" placeholder="347230" />
+          </label>
+          <button id="download-netease" type="button">Download NetEase Track</button>
+        </div>
+
+        <dl class="status-grid">
+          <div>
+            <dt>Last Download</dt>
+            <dd id="download-path">No downloads yet.</dd>
+          </div>
+          <div>
+            <dt>Source</dt>
+            <dd id="download-source">Idle</dd>
+          </div>
+          <div>
+            <dt>State</dt>
+            <dd id="download-state">idle</dd>
+          </div>
+          <div>
+            <dt>Phase</dt>
+            <dd id="download-phase">queued</dd>
+          </div>
+          <div>
+            <dt>Percent</dt>
+            <dd id="download-percent">-</dd>
+          </div>
+          <div>
+            <dt>Message</dt>
+            <dd id="download-message">No active download.</dd>
+          </div>
+          <div>
+            <dt>Detail</dt>
+            <dd id="download-detail">-</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="panel steps">
+        <h2>Flow</h2>
+        <ol>
+          <li>Choose NetEase or Bilibili.</li>
+          <li>Click the open button. The main Tauri webview navigates to <span data-provider-copy="login-url">music.163.com</span>.</li>
+          <li>Finish login inside that same webview.</li>
+          <li>Click the capture button. The app reads the webview cookie store and persists the matching backend session.</li>
+        </ol>
+      </section>
+    </main>
+  </body>
+</html>

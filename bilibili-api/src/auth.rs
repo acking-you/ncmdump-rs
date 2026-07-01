@@ -17,6 +17,8 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
+const NCMDUMP_CONFIG_DIR_ENV: &str = "NCMDUMP_CONFIG_DIR";
+
 /// Persistent Bilibili login session.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct BiliSession {
@@ -88,9 +90,14 @@ impl BiliSession {
     }
 
     fn path() -> Result<PathBuf> {
-        let config = dirs::config_dir()
-            .ok_or_else(|| BilibiliError::Other("cannot determine config directory".into()))?;
-        Ok(config.join("ncmdump").join("bilibili_session.json"))
+        let config = if let Some(path) = std::env::var_os(NCMDUMP_CONFIG_DIR_ENV) {
+            PathBuf::from(path)
+        } else {
+            dirs::config_dir()
+                .ok_or_else(|| BilibiliError::Other("cannot determine config directory".into()))?
+                .join("ncmdump")
+        };
+        Ok(config.join("bilibili_session.json"))
     }
 }
 

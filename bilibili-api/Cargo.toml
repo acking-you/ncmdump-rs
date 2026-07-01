@@ -1,19 +1,17 @@
 [package]
 name = "bilibili-api"
 version = "0.1.0"
-edition.workspace = true
-rust-version.workspace = true
-license.workspace = true
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
 description = "Bilibili video/audio API client for ncmdump-rs"
-
-[lints]
-workspace = true
 
 [dependencies]
 chrono = "0.4"
 dirs = "6"
+download-core = { path = "../download-core" }
 md-5 = "0.10"
-reqwest = { version = "0.12", features = ["blocking", "json"] }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls-webpki-roots"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"

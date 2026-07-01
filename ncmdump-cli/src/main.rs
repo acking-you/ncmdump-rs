@@ -1,7 +1,11 @@
+use std::io::{self, Write};
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
+use download_core::{DownloadProgressEvent, DownloadProgressPhase, DownloadProgressReporter};
 use walkdir::WalkDir;
 
 #[derive(Parser)]
@@ -111,14 +115,14 @@ enum Command {
     /// Show Bilibili video details
     #[command(name = "bili-info")]
     BiliInfo {
-        /// BV ID (e.g. `BV1xx411c7mD`)
-        bvid: String,
+        /// BV ID, av ID, or full Bilibili video URL
+        video: String,
     },
     /// Download audio from Bilibili video
     #[command(name = "bili-download")]
     BiliDownload {
-        /// BV ID
-        bvid: String,
+        /// BV ID, av ID, or full Bilibili video URL
+        video: String,
         /// Output format
         #[arg(short, long, default_value = "mp3")]
         format: BiliFormatArg,
@@ -184,6 +188,83 @@ impl From<BiliFormatArg> for bilibili_api::types::AudioFormat {
     }
 }
 
+#[derive(Default)]
+struct CliProgressState {
+    last_phase: Option<DownloadProgressPhase>,
+    last_percent: Option<u8>,
+    drew_inline: bool,
+}
+
+struct CliProgressReporter {
+    state: Mutex<CliProgressState>,
+}
+
+impl CliProgressReporter {
+    fn new() -> Self {
+        Self {
+            state: Mutex::new(CliProgressState::default()),
+        }
+    }
+}
+
+impl DownloadProgressReporter for CliProgressReporter {
+    fn emit(&self, event: DownloadProgressEvent) {
+        let Ok(mut state) = self.state.lock() else {
+            return;
+        };
+
+        let mut stdout = io::stdout().lock();
+        let phase_changed = state.last_phase.as_ref() != Some(&event.phase);
+
+        if matches!(event.phase, DownloadProgressPhase::Downloading) {
+            if state.drew_inline && !phase_changed {
+                let _ = write!(stdout, "\r");
+            }
+            match event.percent {
+                Some(percent) => {
+                    let _ = write!(
+                        stdout,
+                        "[{}] {:>3}% {}",
+                        event.source, percent, event.message
+                    );
+                }
+                None => {
+                    let _ = write!(stdout, "[{}] {}", event.source, event.message);
+                }
+            }
+            if let Some(detail) = &event.detail {
+                let _ = write!(stdout, " ({detail})");
+            }
+            let _ = stdout.flush();
+            state.last_percent = event.percent;
+            state.drew_inline = true;
+        } else {
+            if state.drew_inline {
+                let _ = writeln!(stdout);
+                state.drew_inline = false;
+            }
+            let _ = write!(stdout, "[{}] {:?}", event.source, event.phase);
+            let _ = write!(stdout, ": {}", event.message);
+            if let Some(detail) = &event.detail {
+                let _ = write!(stdout, " ({detail})");
+            }
+            let _ = writeln!(stdout);
+            let _ = stdout.flush();
+            state.last_percent = None;
+        }
+
+        state.last_phase = Some(event.phase);
+    }
+}
+
+fn next_job_id(prefix: &str) -> String {
+    let ts = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or(0);
+    format!("{prefix}-{ts}")
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
@@ -225,12 +306,12 @@ fn main() -> Result<()> {
             limit,
             page,
         } => cmd_bili_search(&keyword, limit, page),
-        Command::BiliInfo { bvid } => cmd_bili_info(&bvid),
+        Command::BiliInfo { video } => cmd_bili_info(&video),
         Command::BiliDownload {
-            bvid,
+            video,
             format,
             output,
-        } => cmd_bili_download(&bvid, format, output),
+        } => cmd_bili_download(&video, format, output),
         Command::BiliMe => cmd_bili_me(),
     }
 }
@@ -403,8 +484,18 @@ fn cmd_download(track_id: u64, quality: QualityArg, output: Option<PathBuf>) -> 
         PathBuf::from(format!("{track_id}.{ext}"))
     };
 
-    let size = client.download_track(track_id, q, &dest)?;
-    println!("Downloaded {} ({} bytes)", dest.display(), size);
+    let reporter: Arc<dyn DownloadProgressReporter> = Arc::new(CliProgressReporter::new());
+    let request = netease_api::DownloadTrackRequest {
+        job_id: next_job_id("netease"),
+        track_id,
+        quality: q,
+    };
+    let artifact = client.download_track_with_progress(&request, &dest, reporter)?;
+    println!(
+        "Downloaded {} ({} bytes)",
+        dest.display(),
+        artifact.bytes_written
+    );
     Ok(())
 }
 
@@ -524,9 +615,10 @@ fn cmd_bili_search(keyword: &str, limit: u64, page: u64) -> Result<()> {
     Ok(())
 }
 
-fn cmd_bili_info(bvid: &str) -> Result<()> {
+fn cmd_bili_info(video: &str) -> Result<()> {
     let client = bilibili_api::BilibiliClient::new()?;
-    let v = client.video_detail(bvid)?;
+    let bvid = client.resolve_bvid(video)?;
+    let v = client.video_detail(&bvid)?;
     println!("Title:    {}", v.title);
     println!("BV ID:    {}", v.bvid);
     println!("AV ID:    {}", v.aid);
@@ -543,19 +635,29 @@ fn cmd_bili_info(bvid: &str) -> Result<()> {
     Ok(())
 }
 
-fn cmd_bili_download(bvid: &str, format: BiliFormatArg, output: Option<PathBuf>) -> Result<()> {
+fn cmd_bili_download(video: &str, format: BiliFormatArg, output: Option<PathBuf>) -> Result<()> {
     if !bilibili_api::download::ffmpeg_available() {
         anyhow::bail!("ffmpeg not found in PATH. Please install ffmpeg first.");
     }
 
     let client = bilibili_api::BilibiliClient::new()?;
+    let bvid = client.resolve_bvid(video)?;
     let fmt: bilibili_api::types::AudioFormat = format.into();
 
     let dest = output.unwrap_or_else(|| PathBuf::from(format!("{bvid}.{}", fmt.extension())));
 
-    println!("Downloading audio from {bvid}...");
-    let size = client.download_audio(bvid, &dest, fmt)?;
-    println!("Downloaded {} ({} bytes)", dest.display(), size);
+    let reporter: Arc<dyn DownloadProgressReporter> = Arc::new(CliProgressReporter::new());
+    let request = bilibili_api::DownloadAudioTranscodeRequest {
+        job_id: next_job_id("bilibili"),
+        bvid,
+        format: fmt,
+    };
+    let artifact = client.download_audio_with_progress(&request, &dest, reporter)?;
+    println!(
+        "Downloaded {} ({} bytes)",
+        dest.display(),
+        artifact.bytes_written
+    );
     Ok(())
 }
 

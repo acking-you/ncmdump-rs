@@ -25,4 +25,11 @@ pub mod video;
 pub mod wbi;
 
 pub use client::BilibiliClient;
+pub use download::{
+    DownloadAudioRequest, DownloadAudioTranscodeRequest, ffmpeg_available, ffmpeg_convert,
+};
+pub use download_core::{
+    DownloadArtifact, DownloadProgressEvent, DownloadProgressPhase, DownloadProgressReporter,
+    DownloadSource, NoopProgressReporter,
+};
 pub use error::{BilibiliError, Result};

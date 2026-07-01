@@ -1,0 +1,259 @@
+:root {
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  color: #1d1a16;
+  background:
+    radial-gradient(circle at top left, rgba(208, 167, 106, 0.28), transparent 32%),
+    radial-gradient(circle at right, rgba(122, 36, 24, 0.14), transparent 28%),
+    linear-gradient(180deg, #f4eee2 0%, #ece1cf 100%);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.shell {
+  width: min(960px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 40px 0 56px;
+  display: grid;
+  gap: 18px;
+}
+
+.panel {
+  border: 1px solid rgba(64, 37, 17, 0.12);
+  border-radius: 24px;
+  padding: 24px;
+  background: rgba(255, 252, 246, 0.78);
+  box-shadow: 0 18px 50px rgba(88, 54, 30, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+.hero h1,
+.steps h2 {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.hero h1 {
+  max-width: 12ch;
+  font-size: clamp(2.2rem, 5vw, 4.4rem);
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.78rem;
+  color: #8a5130;
+}
+
+.lede {
+  max-width: 62ch;
+  margin: 16px 0 0;
+  color: #58493b;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.provider-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.provider-hint {
+  margin: 0 0 18px;
+  color: #5e4b39;
+}
+
+.download-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.results {
+  display: grid;
+  gap: 10px;
+}
+
+.result-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border: 1px solid rgba(64, 37, 17, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 249, 240, 0.72);
+}
+
+.result-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.result-copy strong,
+.result-copy span {
+  overflow-wrap: anywhere;
+}
+
+.result-copy span {
+  color: #5e4b39;
+  font-size: 0.95rem;
+}
+
+.result-empty {
+  margin: 0;
+  color: #5e4b39;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  color: #5e4b39;
+}
+
+.field span {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8a5130;
+}
+
+.field input {
+  width: 100%;
+  border: 1px solid rgba(64, 37, 17, 0.14);
+  border-radius: 16px;
+  padding: 0.9rem 1rem;
+  font: inherit;
+  color: #1d1a16;
+  background: rgba(255, 251, 244, 0.92);
+}
+
+.field input:focus {
+  outline: 2px solid rgba(177, 78, 33, 0.3);
+  outline-offset: 1px;
+}
+
+button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.82rem 1.2rem;
+  font: inherit;
+  color: #fff9f2;
+  background: linear-gradient(135deg, #8e3325, #b14e21);
+  box-shadow: 0 10px 24px rgba(142, 51, 37, 0.24);
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    opacity 140ms ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(142, 51, 37, 0.28);
+}
+
+button.secondary {
+  color: #593d26;
+  background: #efe2c8;
+  box-shadow: none;
+}
+
+.provider-tab[data-active="true"] {
+  color: #fff9f2;
+  background: linear-gradient(135deg, #8e3325, #b14e21);
+  box-shadow: 0 10px 24px rgba(142, 51, 37, 0.24);
+}
+
+.provider-tab[data-active="false"] {
+  color: #593d26;
+  background: #efe2c8;
+  box-shadow: none;
+}
+
+button.danger {
+  background: linear-gradient(135deg, #523128, #774134);
+}
+
+.status-grid {
+  margin: 22px 0 0;
+  display: grid;
+  gap: 16px;
+}
+
+.status-grid div {
+  padding-top: 14px;
+  border-top: 1px solid rgba(64, 37, 17, 0.1);
+}
+
+dt {
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #8a5130;
+}
+
+dd {
+  margin: 6px 0 0;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.message {
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(132, 103, 50, 0.08);
+  color: #5b4527;
+}
+
+.message[data-kind="error"] {
+  background: rgba(146, 43, 33, 0.1);
+  color: #7a251f;
+}
+
+.steps ol {
+  margin: 16px 0 0;
+  padding-left: 20px;
+}
+
+.steps li + li {
+  margin-top: 10px;
+}
+
+@media (max-width: 640px) {
+  .shell {
+    width: min(100vw - 20px, 960px);
+    padding: 20px 0 32px;
+  }
+
+  .panel {
+    border-radius: 18px;
+    padding: 18px;
+  }
+
+  button {
+    width: 100%;
+    justify-content: center;
+  }
+}

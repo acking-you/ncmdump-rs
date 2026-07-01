@@ -57,8 +57,20 @@
 use crate::client::NeteaseClient;
 use crate::error::{NeteaseError, Result};
 use crate::types::{Album, Artist, Lyric, Quality, Track};
+use download_core::{
+    DownloadArtifact, DownloadProgressEvent, DownloadProgressPhase, DownloadProgressReporter,
+    DownloadSource, NoopProgressReporter,
+};
 use serde_json::{Value, json};
 use std::path::Path;
+use std::sync::Arc;
+
+#[derive(Debug, Clone)]
+pub struct DownloadTrackRequest {
+    pub job_id: String,
+    pub track_id: u64,
+    pub quality: Quality,
+}
 
 impl NeteaseClient {
     /// Get track metadata by ID.
@@ -124,8 +136,92 @@ impl NeteaseClient {
     /// Combines [`track_url`](Self::track_url) + [`download`](Self::download).
     /// Returns the number of bytes written to `dest`.
     pub fn download_track(&self, id: u64, quality: Quality, dest: &Path) -> Result<u64> {
-        let url = self.track_url(id, quality)?;
-        self.download(&url, dest)
+        let request = DownloadTrackRequest {
+            job_id: "download".to_string(),
+            track_id: id,
+            quality,
+        };
+        let artifact =
+            self.download_track_with_progress(&request, dest, Arc::new(NoopProgressReporter))?;
+        Ok(artifact.bytes_written)
+    }
+
+    pub fn download_track_with_progress(
+        &self,
+        request: &DownloadTrackRequest,
+        dest: &Path,
+        reporter: Arc<dyn DownloadProgressReporter>,
+    ) -> Result<DownloadArtifact> {
+        reporter.emit(DownloadProgressEvent {
+            job_id: request.job_id.clone(),
+            source: "netease".to_string(),
+            phase: DownloadProgressPhase::Preparing,
+            percent: None,
+            message: format!("Preparing NetEase track {}", request.track_id),
+            detail: None,
+        });
+        reporter.emit(DownloadProgressEvent {
+            job_id: request.job_id.clone(),
+            source: "netease".to_string(),
+            phase: DownloadProgressPhase::ResolvingMeta,
+            percent: None,
+            message: "Resolving track stream".to_string(),
+            detail: Some(format!("track_id={}", request.track_id)),
+        });
+
+        let url = match self.track_url(request.track_id, request.quality) {
+            Ok(url) => url,
+            Err(error) => {
+                reporter.emit(DownloadProgressEvent {
+                    job_id: request.job_id.clone(),
+                    source: "netease".to_string(),
+                    phase: DownloadProgressPhase::Failed,
+                    percent: None,
+                    message: "Failed to resolve track stream".to_string(),
+                    detail: Some(error.to_string()),
+                });
+                return Err(error);
+            }
+        };
+        let bytes_written = self.download_with_progress(
+            &url,
+            dest,
+            request.job_id.clone(),
+            reporter.clone(),
+            "netease".to_string(),
+            "Downloading audio stream".to_string(),
+        )?;
+        let filename = dest
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned());
+
+        reporter.emit(DownloadProgressEvent {
+            job_id: request.job_id.clone(),
+            source: "netease".to_string(),
+            phase: DownloadProgressPhase::Completed,
+            percent: Some(100),
+            message: "Download complete".to_string(),
+            detail: filename.clone(),
+        });
+
+        Ok(DownloadArtifact {
+            path: dest.to_path_buf(),
+            filename,
+            bytes_written,
+        })
+    }
+}
+
+impl DownloadSource<DownloadTrackRequest> for NeteaseClient {
+    type Error = NeteaseError;
+
+    fn download_with_progress(
+        &self,
+        request: &DownloadTrackRequest,
+        target_path: &Path,
+        reporter: Arc<dyn DownloadProgressReporter>,
+    ) -> std::result::Result<DownloadArtifact, Self::Error> {
+        self.download_track_with_progress(request, target_path, reporter)
     }
 }
 

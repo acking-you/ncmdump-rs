@@ -15,6 +15,8 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
+const NCMDUMP_CONFIG_DIR_ENV: &str = "NCMDUMP_CONFIG_DIR";
+
 /// Persistent login session backed by a JSON file on disk.
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Session {
@@ -71,8 +73,13 @@ impl Session {
     }
 
     fn path() -> Result<PathBuf> {
-        let config = dirs::config_dir()
-            .ok_or_else(|| NeteaseError::Other("cannot determine config directory".into()))?;
-        Ok(config.join("ncmdump").join("session.json"))
+        let config = if let Some(path) = std::env::var_os(NCMDUMP_CONFIG_DIR_ENV) {
+            PathBuf::from(path)
+        } else {
+            dirs::config_dir()
+                .ok_or_else(|| NeteaseError::Other("cannot determine config directory".into()))?
+                .join("ncmdump")
+        };
+        Ok(config.join("session.json"))
     }
 }

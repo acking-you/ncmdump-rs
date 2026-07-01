@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">ncmdump-tauri</string>
+    <string name="main_activity_title">ncmdump-tauri</string>
+</resources>
